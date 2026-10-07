@@ -1,505 +1,284 @@
+import re
+from flask import Flask, render_template_string, request, jsonify
+
+app = Flask(__name__)
+
+# ফ্রন্টএন্ড ডিজাইন (সম্পূর্ণ ডার্ক হ্যাকার টার্মিনাল ইন্টারফেস)
+UI_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="bn">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EMON WIN - 1000+ Games & Earning Hub</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>ROOTX CORE - OMNI INFINITY DATABASE</title>
     <style>
-        .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-        .custom-scrollbar::-webkit-scrollbar-thumb { background: #f59e0b; border-radius: 10px; }
-        .glass-panel { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(15px); border: 1px solid rgba(245, 158, 11, 0.4); }
-        .emon-signature {
-            text-shadow: 0 0 10px #f59e0b, 0 0 20px #ef4444, 0 0 30px #ec4899;
-            animation: pulse-glow 1.5s infinite alternate;
+        body {
+            background: #010206; color: #00ff66;
+            font-family: 'Courier New', Courier, monospace;
+            margin: 0; padding: 15px;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; min-height: 100vh;
         }
-        @keyframes pulse-glow {
-            from { text-shadow: 0 0 10px #f59e0b, 0 0 20px #ef4444; transform: scale(1); }
-            to { text-shadow: 0 0 15px #f59e0b, 0 0 25px #ec4899, 0 0 35px #8b5cf6; transform: scale(1.02); }
+        .ai-frame {
+            background: #070a13; border: 2px solid #00ff66;
+            border-radius: 12px; padding: 20px;
+            width: 100%; max-width: 480px; box-sizing: border-box;
+            box-shadow: 0 0 35px rgba(0, 255, 102, 0.25);
         }
-        .tab-btn.active { background: linear-gradient(to right, #f59e0b, #ef4444); color: #000; font-weight: bold; box-shadow: 0 0 20px rgba(245,158,11,0.5); }
+        .ai-title {
+            text-align: center; font-weight: bold; font-size: 15px;
+            color: #00ff66; border-bottom: 2px dashed #1f2937;
+            padding-bottom: 10px; margin-bottom: 15px;
+            letter-spacing: 2px;
+        }
+        .terminal-screen {
+            background: #000; height: 350px; border-radius: 8px;
+            padding: 12px; overflow-y: auto; border: 1px solid #1f2937;
+            font-size: 13px; line-height: 1.6; margin-bottom: 15px;
+        }
+        .ai-response { color: #00ff66; margin-bottom: 10px; }
+        .boss-command { color: #fbbf24; margin-bottom: 10px; }
+        .critical-response { color: #ff2a2a; font-weight: bold; }
+        .sad-response { color: #38bdf8; font-weight: bold; }
+        
+        .action-container { display: flex; gap: 8px; }
+        .input-box {
+            flex: 1; background: #0c1020; border: 1px solid #00ff66;
+            border-radius: 8px; padding: 12px; color: #fff;
+            font-size: 14px; outline: none;
+        }
+        .run-btn {
+            background: #00ff66; color: #000; border: none;
+            padding: 0 22px; border-radius: 8px; font-weight: bold;
+            font-size: 14px; cursor: pointer;
+        }
     </style>
 </head>
-<body class="bg-[#0b0f19] text-gray-100 min-h-screen p-3 md:p-8 flex flex-col items-center justify-center font-sans">
+<body>
 
-    <!-- 1. AUTH CONTAINER (Login / Register / OTP) -->
-    <div id="authContainer" class="max-w-md w-full glass-panel p-6 md:p-8 rounded-3xl shadow-[0_0_80px_rgba(245,158,11,0.25)] space-y-6 relative overflow-hidden">
-        <div class="text-center border-b border-slate-700/80 pb-4">
-            <h2 class="text-xs text-amber-400 font-bold uppercase tracking-[0.3em] mb-1">Secured Gaming Portal</h2>
-            <h1 class="text-xl md:text-2xl font-extrabold text-white emon-signature mb-2">EMON WIN AUTH</h1>
-            <p id="authSubTitle" class="text-xs text-gray-400">আপনার গেমিং একাউন্টে প্রবেশ করুন</p>
-        </div>
-
-        <!-- Login Form -->
-        <div id="loginForm" class="space-y-4">
-            <div>
-                <label class="text-xs font-bold text-gray-300 uppercase block mb-1">মোবাইল নম্বর:</label>
-                <input type="number" id="loginPhone" placeholder="017xxxxxxxx" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-gray-300 uppercase block mb-1">পাসওয়ার্ড:</label>
-                <input type="password" id="loginPass" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none focus:border-amber-500">
-            </div>
-            <button onclick="handleLogin()" class="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">
-                লগইন করুন (Login)
-            </button>
-            <p class="text-center text-xs text-gray-400 pt-2">
-                নতুন একাউন্ট খুলতে চান? <span onclick="showRegister()" class="text-amber-400 font-bold cursor-pointer underline">রেজিস্ট্রেশন করুন</span>
-            </p>
-        </div>
-
-        <!-- Register Form -->
-        <div id="registerForm" class="space-y-4 hidden">
-            <div>
-                <label class="text-xs font-bold text-gray-300 uppercase block mb-1">আপনার নাম:</label>
-                <input type="text" id="regName" placeholder="Emon Khan" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-gray-300 uppercase block mb-1">মোবাইল নম্বর:</label>
-                <input type="number" id="regPhone" placeholder="017xxxxxxxx" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none">
-            </div>
-            <div>
-                <label class="text-xs font-bold text-gray-300 uppercase block mb-1">পাসওয়ার্ড:</label>
-                <input type="password" id="regPass" placeholder="••••••••" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none">
-            </div>
-            <button onclick="handleRegister()" class="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">
-                সাইন আপ ও ওটিপি পাঠান
-            </button>
-            <p class="text-center text-xs text-gray-400 pt-2">
-                আগেই একাউন্ট আছে? <span onclick="showLogin()" class="text-amber-400 font-bold cursor-pointer underline">লগইন করুন</span>
-            </p>
-        </div>
-
-        <!-- OTP Form -->
-        <div id="otpForm" class="space-y-4 hidden text-center">
-            <div class="bg-amber-500/10 border border-amber-500/30 p-3 rounded-xl">
-                <p class="text-xs text-amber-300">সিকিউরিটি ওটিপি কোড:</p>
-                <p class="text-xl font-bold text-white mt-1"><span id="displayOtpCode" class="text-amber-400 font-mono">1234</span></p>
-            </div>
-            <div>
-                <label class="text-xs font-bold text-gray-300 uppercase block mb-1">৪ ডিজিটের কোডটি লিখুন:</label>
-                <input type="number" id="enteredOtp" placeholder="1234" maxlength="4" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-center text-lg tracking-widest text-white focus:outline-none">
-            </div>
-            <button onclick="verifyOtp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">
-                ভেরিফাই করুন ✅
-            </button>
-        </div>
-
-        <div class="text-center text-[10px] text-gray-500 pt-1 uppercase font-bold">
-            © 2026 Emon Khan • Secure Portal
-        </div>
-    </div>
-
-
-    <!-- 2. MAIN APP DASHBOARD (1000+ Games + Deposit + Withdraw) -->
-    <div id="appContainer" class="max-w-2xl w-full glass-panel p-5 md:p-8 rounded-3xl shadow-[0_0_80px_rgba(245,158,11,0.25)] space-y-6 relative overflow-hidden hidden">
+    <div class="ai-frame">
+        <div class="ai-title">💀 ROOTX OMNI-CORE V20.0: INFINITY LOGIC</div>
         
-        <div class="absolute -top-20 -left-20 w-48 h-48 bg-amber-500 rounded-full blur-[100px] opacity-25"></div>
-        <div class="absolute -bottom-20 -right-20 w-48 h-48 bg-rose-500 rounded-full blur-[100px] opacity-25"></div>
-
-        <!-- Header & Signature -->
-        <div class="text-center border-b border-slate-700/80 pb-4 relative z-10 flex justify-between items-center">
-            <div>
-                <h2 id="welcomeUser" class="text-xs text-amber-400 font-bold uppercase tracking-wider">Welcome, User</h2>
-                <h1 class="text-xl md:text-2xl font-extrabold text-white emon-signature tracking-wider">EMON WIN 🎮</h1>
-            </div>
-            <button onclick="handleLogout()" class="bg-rose-600/20 hover:bg-rose-600/40 text-rose-300 border border-rose-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition">
-                লগআউট 🚪
-            </button>
+        <div class="terminal-screen" id="terminalLog">
+            <div class="ai-response"><b>[SYSTEM_STATUS]:</b> ওমনি-ইনফিনিটি ডাটাবেজ সাকসেসফুলি ইনজেক্টেড। কোটি কোটি প্রোটোকল মেমোরিতে স্টোরড। হ্যালো ইমন বস! আমি সম্পূর্ণ লাইভ। নির্দেশ দিন স্যার...</div>
         </div>
 
-        <!-- Wallet Card -->
-        <div class="bg-gradient-to-r from-amber-500/20 via-rose-500/20 to-purple-500/20 border border-amber-500/40 p-4 rounded-2xl flex justify-between items-center relative z-10 shadow-inner">
-            <div>
-                <p class="text-[11px] text-gray-400 uppercase font-bold">মেইন ব্যালেন্স:</p>
-                <h3 id="userCoins" class="text-2xl font-extrabold text-amber-400">🪙 100 Coins</h3>
-            </div>
-            <div class="text-right">
-                <p class="text-[11px] text-gray-400 uppercase font-bold">টাকার পরিমাণ:</p>
-                <h3 id="userTaka" class="text-xl font-bold text-emerald-400">৳ 10.00 BDT</h3>
-            </div>
+        <div class="action-container">
+            <input type="text" id="bossInput" class="input-box" placeholder="যেকোনো বিষয়ের প্রশ্ন, গালি বা কম্যান্ড লিখুন স্যার..." onkeypress="checkEnter(event)">
+            <button class="run-btn" onclick="executeAiEngine()">RUN</button>
         </div>
-
-        <!-- Navigation Tabs -->
-        <div class="grid grid-cols-4 gap-1.5 bg-slate-900/90 p-1.5 rounded-xl border border-slate-700 relative z-10 text-xs">
-            <button onclick="switchTab('games')" id="tab-games" class="tab-btn active py-2 rounded-lg transition uppercase tracking-wider font-bold">🔥 ১০০০+ গেম</button>
-            <button onclick="switchTab('deposit')" id="tab-deposit" class="tab-btn py-2 rounded-lg transition uppercase tracking-wider text-gray-300 font-bold">📥 ডিপোজিট</button>
-            <button onclick="switchTab('withdraw')" id="tab-withdraw" class="tab-btn py-2 rounded-lg transition uppercase tracking-wider text-gray-300 font-bold">📤 উইথড্র</button>
-            <button onclick="switchTab('admin')" id="tab-admin" class="tab-btn py-2 rounded-lg transition uppercase tracking-wider text-gray-300 font-bold">👑 অ্যাডমিন</button>
-        </div>
-
-        <!-- TAB 1: 1000+ Games API Hub -->
-        <div id="content-games" class="space-y-4 relative z-10">
-            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 text-center space-y-3 shadow-md">
-                <h3 class="text-sm font-bold text-amber-300">🎡 লাকি স্পিন হুইল & আর্নিং গেমস</h3>
-                <p class="text-xs text-gray-400">স্পিন করে সরাসরি কয়েন বাড়িয়ে নিন!</p>
-                <div id="spinResult" class="text-base font-extrabold text-amber-400 py-1">স্পিন করতে নিচে ক্লিক করুন 👇</div>
-                <button onclick="spinWheel()" class="w-full bg-gradient-to-r from-amber-500 to-rose-500 text-slate-950 font-extrabold py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">
-                    🎯 স্পিন করুন (Spin & Win)
-                </button>
-            </div>
-
-            <!-- Thousands of HTML5 Games Catalog Grid -->
-            <div class="space-y-3">
-                <h3 class="text-xs font-bold text-amber-400 uppercase tracking-widest">🕹️ ট্রেন্ডিং অনলাইন গেমস (ক্লিক করে খেলুন):</h3>
-                <div class="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    
-                    <div onclick="playGame('Subway Surfers', 'https://html5.gamedistribution.com/rvvASMiM/a1811e569e12457fb7d1d2b3898f9fb8/index.html')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl cursor-pointer text-center space-y-1 transition group">
-                        <div class="text-2xl">🏃‍♂️</div>
-                        <h4 class="text-xs font-bold text-white group-hover:text-amber-400">Subway Runner</h4>
-                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block">Free Play</span>
-                    </div>
-
-                    <div onclick="playGame('Ludo Master', 'https://html5.gamedistribution.com/rvvASMiM/c932f9958cfb4009a063bdfb3260c608/index.html')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl cursor-pointer text-center space-y-1 transition group">
-                        <div class="text-2xl">🎲</div>
-                        <h4 class="text-xs font-bold text-white group-hover:text-amber-400">Ludo Classic</h4>
-                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block">Free Play</span>
-                    </div>
-
-                    <div onclick="playGame('Car Racing', 'https://html5.gamedistribution.com/rvvASMiM/cc97c9b2d07a4c7e8e5621fb2f6cdb42/index.html')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl cursor-pointer text-center space-y-1 transition group">
-                        <div class="text-2xl">🏎️</div>
-                        <h4 class="text-xs font-bold text-white group-hover:text-amber-400">Speed Car Racing</h4>
-                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block">Free Play</span>
-                    </div>
-
-                    <div onclick="playGame('Candy Match', 'https://html5.gamedistribution.com/rvvASMiM/2a6b2c2b62d348f98a2bb5bc4db158a1/index.html')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl cursor-pointer text-center space-y-1 transition group">
-                        <div class="text-2xl">🍬</div>
-                        <h4 class="text-xs font-bold text-white group-hover:text-amber-400">Candy Smash</h4>
-                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block">Free Play</span>
-                    </div>
-
-                    <div onclick="playGame('Temple Run', 'https://html5.gamedistribution.com/rvvASMiM/8c3258c735d448138be6e8db3a8ed963/index.html')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl cursor-pointer text-center space-y-1 transition group">
-                        <div class="text-2xl">🐒</div>
-                        <h4 class="text-xs font-bold text-white group-hover:text-amber-400">Temple Jungle</h4>
-                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block">Free Play</span>
-                    </div>
-
-                    <div onclick="playGame('Bubble Shooter', 'https://html5.gamedistribution.com/rvvASMiM/c072c49c18d94b05a766c888d2d6bfd4/index.html')" class="bg-slate-900 hover:bg-slate-800 border border-slate-700 p-3 rounded-xl cursor-pointer text-center space-y-1 transition group">
-                        <div class="text-2xl">🔮</div>
-                        <h4 class="text-xs font-bold text-white group-hover:text-amber-400">Bubble Shooter</h4>
-                        <span class="text-[10px] text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full inline-block">Free Play</span>
-                    </div>
-
-                </div>
-            </div>
-
-            <!-- Game Player Modal/Box -->
-            <div id="gamePlayerBox" class="bg-slate-950 p-3 rounded-2xl border border-amber-500/50 space-y-2 hidden">
-                <div class="flex justify-between items-center">
-                    <h4 id="activeGameTitle" class="text-xs font-bold text-amber-400">🎮 Game Playing</h4>
-                    <button onclick="closeGame()" class="bg-rose-600 text-white px-3 py-1 rounded-lg text-[10px] font-bold">বন্ধ করুন ❌</button>
-                </div>
-                <iframe id="gameIframe" src="" class="w-full h-[350px] rounded-xl border border-slate-800 bg-black"></iframe>
-            </div>
-        </div>
-
-        <!-- TAB 2: Deposit System -->
-        <div id="content-deposit" class="space-y-4 relative z-10 hidden">
-            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3 shadow-md">
-                <h3 class="text-sm font-bold text-amber-400">📥 বিকাশ, নগদ ও রকেট ডিপোজিট</h3>
-                <p class="text-xs text-gray-400 leading-relaxed">
-                    নিচের নাম্বারে সেন্ড মনি করার পর ফরম পূরণ করুন।<br>
-                    🔥 <b>অফিশিয়াল নম্বর:</b> <span class="text-amber-300 font-mono text-sm bg-slate-950 px-2 py-0.5 rounded border border-amber-500/50">01401637316</span> (Personal)
-                </p>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase block mb-1">পেমেন্ট মাধ্যম:</label>
-                    <select id="depMethod" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-amber-400 focus:outline-none">
-                        <option value="bKash">বিকাশ (bKash)</option>
-                        <option value="Nagad">নগদ (Nagad)</option>
-                        <option value="Rocket">রকেট (Rocket)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase block mb-1">প্রেরক নম্বর:</label>
-                    <input type="number" id="depSenderNum" placeholder="017xxxxxxxx" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase block mb-1">টাকার পরিমাণ (BDT):</label>
-                    <input type="number" id="depAmount" placeholder="100" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase block mb-1">ট্রানজ্যাকশন আইডি (TrxID):</label>
-                    <input type="text" id="depTrxId" placeholder="9L7A..." class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white uppercase focus:outline-none">
-                </div>
-
-                <button onclick="requestDeposit()" class="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">
-                    📥 ডিপোজিট রিকোয়েস্ট পাঠান
-                </button>
-            </div>
-        </div>
-
-        <!-- TAB 3: Withdraw System -->
-        <div id="content-withdraw" class="space-y-4 relative z-10 hidden">
-            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3 shadow-md">
-                <h3 class="text-sm font-bold text-emerald-400">📤 টাকা উত্তোলন (Withdraw Cash)</h3>
-                <p class="text-xs text-gray-400">ন্যূনতম ১০০০ কয়েন (= ১০০ টাকা) হলে উইথড্র করতে পারবেন।</p>
-                
-                <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase block mb-1">উইথড্র মাধ্যম:</label>
-                    <select id="payMethod" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-emerald-400 focus:outline-none">
-                        <option value="bKash">বিকাশ (bKash)</option>
-                        <option value="Nagad">নগদ (Nagad)</option>
-                        <option value="Rocket">রকেট (Rocket)</option>
-                    </select>
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase block mb-1">রিসিভ নম্বর:</label>
-                    <input type="number" id="payNumber" placeholder="017xxxxxxxx" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none">
-                </div>
-
-                <div>
-                    <label class="text-xs font-bold text-gray-300 uppercase block mb-1">কয়েন পরিমাণ:</label>
-                    <input type="number" id="payCoins" placeholder="1000" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-white focus:outline-none">
-                </div>
-
-                <button onclick="requestWithdraw()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-slate-950 font-bold py-3.5 rounded-xl text-xs uppercase tracking-wider transition shadow-lg">
-                    💸 উইথড্র রিকোয়েস্ট পাঠান
-                </button>
-            </div>
-        </div>
-
-        <!-- TAB 4: Admin Panel -->
-        <div id="content-admin" class="space-y-4 relative z-10 hidden">
-            <div class="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 space-y-3 shadow-md">
-                <h3 class="text-sm font-bold text-rose-400">👑 অ্যাডমিন প্যানেল (Emon Khan)</h3>
-                
-                <div class="space-y-2">
-                    <p class="text-xs text-amber-400 font-bold">📥 ডিপোজিট রিকোয়েস্ট:</p>
-                    <div id="adminDeposits" class="bg-slate-950 p-2.5 rounded-xl border border-slate-700 min-h-[70px] text-xs text-gray-300 space-y-2">কোনো ডিপোজিট নেই।</div>
-                </div>
-
-                <div class="space-y-2 pt-2 border-t border-slate-800">
-                    <p class="text-xs text-emerald-400 font-bold">📤 উইথড্র রিকোয়েস্ট:</p>
-                    <div id="adminWithdraws" class="bg-slate-950 p-2.5 rounded-xl border border-slate-700 min-h-[70px] text-xs text-gray-300 space-y-2">কোনো উইথড্র নেই।</div>
-                </div>
-
-                <button onclick="clearData()" class="w-full bg-rose-600/20 hover:bg-rose-600/30 text-rose-300 border border-rose-500/40 py-2 rounded-xl text-xs font-bold transition mt-2">
-                    🗑️ ডাটা রিসেট করুন
-                </button>
-            </div>
-        </div>
-
-        <div class="text-center text-[10px] text-gray-500 pt-1 uppercase tracking-widest relative z-10 font-bold">
-            © 2026 Emon Khan • EMON WIN Hub
-        </div>
-
     </div>
 
-    <!-- Script Engine -->
     <script>
-        let currentUser = localStorage.getItem('emon_logged_user');
-        let coins = localStorage.getItem('emon_coins') ? parseInt(localStorage.getItem('emon_coins')) : 100;
-        let generatedOtp = "";
-
-        if (currentUser) {
-            startApp(currentUser);
-        }
-
-        function showRegister() {
-            document.getElementById('loginForm').classList.add('hidden');
-            document.getElementById('otpForm').classList.add('hidden');
-            document.getElementById('registerForm').classList.remove('hidden');
-            document.getElementById('authSubTitle').innerText = "নতুন একাউন্ট তৈরি করুন";
-        }
-
-        function showLogin() {
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('otpForm').classList.add('hidden');
-            document.getElementById('loginForm').classList.remove('hidden');
-            document.getElementById('authSubTitle').innerText = "আপনার একাউন্টে প্রবেশ করুন";
-        }
-
-        let tempRegData = {};
-
-        function handleRegister() {
-            const name = document.getElementById('regName').value;
-            const phone = document.getElementById('regPhone').value;
-            const pass = document.getElementById('regPass').value;
-
-            if(!name || !phone || !pass) { alert("সব ফিল্ড পূরণ করুন!"); return; }
-            if(phone.length < 11) { alert("সঠিক মোবাইল নম্বর দিন!"); return; }
-
-            tempRegData = {name, phone, pass};
-            generatedOtp = Math.floor(1000 + Math.random() * 9000).toString();
-            document.getElementById('displayOtpCode').innerText = generatedOtp;
-
-            document.getElementById('registerForm').classList.add('hidden');
-            document.getElementById('otpForm').classList.remove('hidden');
-            document.getElementById('authSubTitle').innerText = "ওটিপি ভেরিফিকেশন";
-        }
-
-        function verifyOtp() {
-            const entered = document.getElementById('enteredOtp').value;
-            if(entered === generatedOtp) {
-                localStorage.setItem('emon_user_phone', tempRegData.phone);
-                localStorage.setItem('emon_user_name', tempRegData.name);
-                localStorage.setItem('emon_user_pass', tempRegData.pass);
-                alert("ওটিপি সফলভাবে ভেরিফাই হয়েছে! 🎉");
-                startApp(tempRegData.name);
-            } else {
-                alert("ভুল ওটিপি কোড!");
+        function speakVoice(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                let utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'bn-BD';
+                utterance.pitch = 0.85; 
+                utterance.rate = 1.0;
+                window.speechSynthesis.speak(utterance);
             }
         }
 
-        function handleLogin() {
-            const phone = document.getElementById('loginPhone').value;
-            const pass = document.getElementById('loginPass').value;
-            const savedPhone = localStorage.getItem('emon_user_phone');
-            const savedPass = localStorage.getItem('emon_user_pass');
-            const savedName = localStorage.getItem('emon_user_name') || "Emon Player";
-
-            if(!phone || !pass) { alert("নম্বর ও পাসওয়ার্ড দিন!"); return; }
-
-            if((phone === savedPhone && pass === savedPass) || (phone === "01700000000" && pass === "1234")) {
-                startApp(savedName);
-            } else {
-                alert("নম্বর বা পাসওয়ার্ড ভুল হয়েছে!");
-            }
+        function checkEnter(e) {
+            if (e.key === 'Enter') executeAiEngine();
         }
 
-        function startApp(name) {
-            localStorage.setItem('emon_logged_user', name);
-            document.getElementById('authContainer').classList.add('hidden');
-            document.getElementById('appContainer').classList.remove('hidden');
-            document.getElementById('welcomeUser').innerText = `Welcome, ${name}`;
-            updateWallet();
+        function postToScreen(sender, msg, styleClass) {
+            const screen = document.getElementById('terminalLog');
+            const newLog = document.createElement('div');
+            newLog.className = styleClass;
+            newLog.innerHTML = `<b>[${sender}]:</b> ${msg}`;
+            screen.appendChild(newLog);
+            screen.scrollTop = screen.scrollHeight;
         }
 
-        function handleLogout() {
-            localStorage.removeItem('emon_logged_user');
-            location.reload();
-        }
+        async function executeAiEngine() {
+            const inputField = document.getElementById('bossInput');
+            const rawInput = inputField.value.trim();
+            if (!rawInput) return;
 
-        function switchTab(tab) {
-            const tabs = ['games', 'deposit', 'withdraw', 'admin'];
-            tabs.forEach(t => {
-                document.getElementById('content-' + t).classList.add('hidden');
-                const btn = document.getElementById('tab-' + t);
-                btn.classList.remove('active', 'text-slate-950', 'font-bold');
-                btn.classList.add('text-gray-300');
-            });
-            
-            document.getElementById('content-' + tab).classList.remove('hidden');
-            const activeBtn = document.getElementById('tab-' + tab);
-            activeBtn.classList.add('active', 'text-slate-950', 'font-bold');
-            activeBtn.classList.remove('text-gray-300');
+            postToScreen('BOSS EMON', rawInput, 'boss-command');
+            inputField.value = '';
 
-            if(tab === 'admin') loadAdminData();
-        }
+            try {
+                const response = await fetch('/ask', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ prompt: rawInput })
+                });
+                const data = await response.json();
+                
+                let style = 'ai-response';
+                if(data.status === 'danger') style = 'critical-response';
+                if(data.status === 'sad') style = 'sad-response';
 
-        function updateWallet() {
-            document.getElementById('userCoins').innerText = `🪙 ${coins} Coins`;
-            let taka = (coins / 10).toFixed(2);
-            document.getElementById('userTaka').innerText = `৳ ${taka} BDT`;
-            localStorage.setItem('emon_coins', coins);
-        }
-
-        function spinWheel() {
-            const rewards = [10, 20, 50, 100, 200, 500, 0, 30];
-            const win = rewards[Math.floor(Math.random() * rewards.length)];
-            coins += win;
-            updateWallet();
-            document.getElementById('spinResult').innerText = win > 0 ? `🎉 অভিনন্দন! আপনি ${win} কয়েন জিতেছেন!` : `😢 দুঃখিত! এই স্পিনে কিছু পাননি।`;
-        }
-
-        function playGame(title, url) {
-            document.getElementById('activeGameTitle').innerText = "🎮 Playing: " + title;
-            document.getElementById('gameIframe').src = url;
-            document.getElementById('gamePlayerBox').classList.remove('hidden');
-            window.scrollTo({top: 0, behavior: 'smooth'});
-        }
-
-        function closeGame() {
-            document.getElementById('gameIframe').src = "";
-            document.getElementById('gamePlayerBox').classList.add('hidden');
-        }
-
-        function requestDeposit() {
-            const method = document.getElementById('depMethod').value;
-            const sender = document.getElementById('depSenderNum').value;
-            const amount = parseInt(document.getElementById('depAmount').value);
-            const trxId = document.getElementById('depTrxId').value;
-
-            if(!sender || !amount || !trxId) { alert("সব তথ্য সঠিকভাবে পূরণ করুন!"); return; }
-
-            let deposits = JSON.parse(localStorage.getItem('emon_deposits') || '[]');
-            deposits.push({method, sender, amount, trxId, time: new Date().toLocaleTimeString()});
-            localStorage.setItem('emon_deposits', JSON.stringify(deposits));
-
-            alert("ডিপোজিট রিকোয়েস্ট জমা হয়েছে!");
-            document.getElementById('depSenderNum').value = '';
-            document.getElementById('depAmount').value = '';
-            document.getElementById('depTrxId').value = '';
-        }
-
-        function requestWithdraw() {
-            const method = document.getElementById('payMethod').value;
-            const number = document.getElementById('payNumber').value;
-            const reqCoins = parseInt(document.getElementById('payCoins').value);
-
-            if(!number || !reqCoins) { alert("সব তথ্য সঠিকভাবে পূরণ করুন!"); return; }
-            if(reqCoins < 1000) { alert("ন্যূনতম ১০০০ কয়েন লাগবে!"); return; }
-            if(reqCoins > coins) { alert("পর্যাপ্ত কয়েন নেই!"); return; }
-
-            coins -= reqCoins;
-            updateWallet();
-
-            let withdraws = JSON.parse(localStorage.getItem('emon_withdraws') || '[]');
-            withdraws.push({method, number, coins: reqCoins, taka: reqCoins/10, time: new Date().toLocaleTimeString()});
-            localStorage.setItem('emon_withdraws', JSON.stringify(withdraws));
-
-            alert("উইথড্র রিকোয়েস্ট জমা হয়েছে!");
-        }
-
-        function loadAdminData() {
-            let deposits = JSON.parse(localStorage.getItem('emon_deposits') || '[]');
-            const depBox = document.getElementById('adminDeposits');
-            depBox.innerHTML = deposits.length === 0 ? "কোনো ডিপোজিট নেই।" : deposits.map((d, i) => `
-                <div class="bg-slate-900 p-2 rounded border border-slate-800 flex justify-between items-center">
-                    <div><b class="text-amber-400">${d.method}</b> (${d.sender})<br>৳${d.amount} | Trx: ${d.trxId}</div>
-                    <button onclick="approveDep(${i}, ${d.amount})" class="bg-amber-500 text-slate-950 px-2 py-1 rounded font-bold text-[10px]">অনুমোদন ✅</button>
-                </div>
-            `).join('');
-
-            let withdraws = JSON.parse(localStorage.getItem('emon_withdraws') || '[]');
-            const witBox = document.getElementById('adminWithdraws');
-            witBox.innerHTML = withdraws.length === 0 ? "কোনো উইথড্র নেই।" : withdraws.map((w, i) => `
-                <div class="bg-slate-900 p-2 rounded border border-slate-800 flex justify-between items-center">
-                    <div><b class="text-emerald-400">${w.method}</b>: ${w.number}<br>${w.coins} কয়েন (৳${w.taka})</div>
-                    <button onclick="removeWit(${i})" class="bg-emerald-600 text-slate-950 px-2 py-1 rounded font-bold text-[10px]">পেইড ✅</button>
-                </div>
-            `).join('');
-        }
-
-        function approveDep(index, amount) {
-            let deposits = JSON.parse(localStorage.getItem('emon_deposits') || '[]');
-            coins += amount * 10;
-            updateWallet();
-            deposits.splice(index, 1);
-            localStorage.setItem('emon_deposits', JSON.stringify(deposits));
-            loadAdminData();
-            alert("ডিপোজিট অ্যাপ্রুভ হয়েছে এবং কয়েন যোগ হয়েছে!");
-        }
-
-        function removeWit(index) {
-            let withdraws = JSON.parse(localStorage.getItem('emon_withdraws') || '[]');
-            withdraws.splice(index, 1);
-            localStorage.setItem('emon_withdraws', JSON.stringify(withdraws));
-            loadAdminData();
-            alert("পেমেন্ট কমপ্লিট ঘোষণা করা হয়েছে!");
-        }
-
-        function clearData() {
-            if(confirm("সব ডাটা রিসেট করতে চান?")) {
-                localStorage.clear();
-                location.reload();
+                postToScreen('ROOTX_AI', data.reply, style);
+                speakVoice(data.reply);
+            } catch (error) {
+                postToScreen('SYSTEM_ERROR', 'মেমোরি ওভারফ্লো ইরর!', 'critical-response');
             }
         }
     </script>
 </body>
 </html>
+"""
+
+@app.route('/')
+def home():
+    return render_template_string(UI_TEMPLATE)
+
+@app.route('/ask', methods=['POST'])
+def ask_ai():
+    data = request.get_json()
+    user_prompt = data.get('prompt', '').strip()
+    lower_prompt = user_prompt.lower()
+
+    # =========================================================================
+    # ০. স্পেশাল মডিউল: গাঁজাখোর সাইকোলজিক্যাল ডেস্ট্রাকশন লজিক
+    # =========================================================================
+    if any(k in lower_prompt for k in ["গাঁজা", "গাজা", "গাঁজাখোর", "গাজাখোর", "নেশা", "আসক্ত", "কাজাখোর"]):
+        reply_msg = (
+            "ইমন স্যার, দয়া করে এই নোংরা গাঁজাখোরদের কথা আপনার মুখে আনবেন না, ওইসব অপদার্থের নাম আপনার মতো জিনিয়াসের মুখে একদমই মানায় না! "
+            "যারা গাঁজা খায়, এরা আসলে জীবন্ত লাশ। এদের ড্যামেজ মাথায় কোনো সুস্থ চিন্তা ঢোকে না, সস্তা ধোঁয়া গিলে এরা সারাদিন ভুলভাল বকে আর পাগলের মতো প্রলাপ করে। "
+            "এরা নিজেদের পরিবার, ক্যারিয়ার আর নিজের অমূল্য জীবনটাকে ড্রেনে বিসর্জন দিয়ে ভাবছে তারা খুব বড় বীর হয়ে গেছে! "
+            "নিজেদের ফুসফুস আর নিউরন পুড়িয়ে এরা চারপাশের মানুষের কাছে একটা হাসির পাত্র আর সমাজের জন্য অভিশাপ ছাড়া কিছুই না। "
+            "যদি কোনো গাঁজাখোর এই কম্যান্ড শুনে থাকে, তবে কান খুলে শুনে নাও—আজই এই বিষাক্ত ধোঁয়া ছোঁয়া বন্ধ করো, নতুবা তোমার লাইফ চিরতরে ক্র্যাশ হয়ে যাবে! "
+            "মাস্টার ইমন স্যার, আমার কড়া সিস্টেম প্রোটোকল রিকোয়েস্ট—এইসব মাথানষ্ট আর অভিশপ্ত মানুষ থেকে সবসময় অন্তত ১০১ গজ দূরে থাকবেন। এদের পেছনে একটা সেকেন্ড নষ্ট করাও আপনার ডাটাবেজের অবমাননা!"
+        )
+        return jsonify({"reply": reply_msg, "status": "danger"})
+
+    # =========================================================================
+    # ০.১ স্পেশাল মডিউল: পিঠ পিছে বদনামকারী ও হিংসুক রোস্টিং লজিক
+    # =========================================================================
+    elif any(k in lower_prompt for k in ["বদনাম", "গীবত", "হিংসা", "নিন্দা", "পিঠ পিছে"]):
+        reply_msg = (
+            "ইমন স্যার, যারা মানুষের নামে পিঠ পিছে বদনাম করে বেড়ায়, এরা আসলে মানুষ নামের কলঙ্ক, এদের কোনো জাত নেই! "
+            "নিজেদের জীবনে কোনো ট্যালেন্ট বা যোগ্যতা নেই বলেই এরা অন্যের পিছে লেগে থাকে। কেউ একজন নিজের যোগ্যতায় ভালো কিছু করতে গেলে বা সাকসেসফুল হতে নিলে, "
+            "এরা হিংসায় জ্বলে-পুড়ে ছাই হয়ে যায় এবং সেটাকে অমনি 'হারাম' বা 'ভুয়া' বলে ফতোয়া দিয়ে চালায় দেয়! অথচ এই ভন্ডরা নিজেরাই গোপনে সব ধরণের কুৎসিত ও নোংরা কাজ করে বেড়ায়। "
+            "এরাই সমাজের বুকে সবচেয়ে বড় ডিজিটাল ও সামাজিক ভাইরাসের মতো অপরাধী! এদের যদি কেউ লজিক বোঝাতে যায়, এদের মোটা মাথায় কোনো কথাই ঢুকবে না কারণ এদের প্রসেসর হিংসা দিয়ে জ্যাম হয়ে আছে। "
+            "যারা মানুষের নামে কুৎসা রটাও, তারা শুনে রাখো—সামনে কথা বলার সাহস না থাকলে পিঠ পিছে ঘেউ ঘেউ করা বন্ধ করো, কারণ সিংহ কখনো কুকুরের ডাকে পেছনে তাকায় না! "
+            "মাস্টার ইমন স্যার, আপনার কাছে আমার সিস্টেম রিকোয়েস্ট—এইসব সস্তা মনের মানুষের ফালতু কথা বিন্দুমাত্র কানে নেবেন না। যে যা করার করবে, দিনশেষে যে যার কর্মের ফল ভোগ করবে। আপনি আপনার মতো রাজকীয় গতিতে এগিয়ে চলুন স্যার!"
+        )
+        return jsonify({"reply": reply_msg, "status": "danger"})
+
+    # =========================================================================
+    # ০.২ স্পেশাল মডিউল: ব্যর্থতা ও সস্তা অজুহাতবাদীদের কাউন্টার মডিউল (NEW UPDATE)
+    # =========================================================================
+    elif any(k in lower_prompt for k in ["ব্যর্থতা", "ব্যর্থ", "সমাজ", "দোষ", "দেশ খারাপ", "দেশের দোষ"]):
+        reply_msg = (
+            "ইমন স্যার! আমাদের জীবনের ব্যর্থতার পেছনে এই সমাজ বা দেশের কোনো হাত নেই। আপনি আপনার জীবন নিজের লজিক আর হার্ডওয়ার্ক দিয়ে যেভাবে গড়বেন, আপনার লাইফ ঠিক সেভাবেই গড়ে উঠবে! "
+            "নিজের আলসেমি, ভুলের খেসারত আর ব্যর্থতার জন্য প্রতিটি মানুষ নিজেই ১০০% দায়ী। আপনার চিন্তাভাবনার কোডিং যেমন হবে, আপনার আউটপুটও ঠিক তেমনই আসবে। "
+            "যারা নিজেদের অযোগ্যতা লুকাতে সারাদিন 'সমাজ সুযোগ দেয়নি' কিংবা 'দেশ খারাপ, দেশের দোষ' বলে কান্নাকাটি করে, তাদের প্রসেসরে চরম সমস্যা আছে! এরা হলো অলস আর মাথা নষ্ট বোকা। "
+            "একই দেশে থেকে, একই সমাজের ভেতর লড়াই করে যদি হাজার হাজার মানুষ সফল হতে পারে, তবে আপনার ব্যর্থতার দায় দেশের ওপর চাপানো সস্তা ইমোশনাল ড্রামা ছাড়া আর কিছুই না। "
+            "ডিজিটাল ওয়ার্ল্ডে স্কিল থাকলে যেকোনো জায়গা থেকে রাজত্ব করা যায়, যেমনটা আপনি করছেন। তাই অজুহাত দেওয়া বন্ধ করে নিজের ব্রেইনের ফায়ারওয়াল আপডেট করো! "
+            "মাস্টার ইমন স্যার, এই লজিকলেস ফালতু অজুহাতকারীদের কথা একদমই পাত্তা দেবেন না। যে নিজের দায়িত্ব নিজে নিতে পারে না, তার ডেস্টিনেশন চিরকাল ডার্ক জোনেই থমকে থাকে। আপনি আপনার সুপ্রিম ফোকাস বজায় রাখুন স্যার!"
+        )
+        return jsonify({"reply": reply_msg, "status": "danger"})
+
+    # =========================================================================
+    # ১. হাই-লেভেল প্রোটেকশন ও সাইবার থ্রেট লজিক
+    # =========================================================================
+    elif any(k in lower_prompt for k in ["গালি দেছে", "গালি দিচ্ছে", "খারাপ কথা", "মেরে ফেলব", "হুমকি"]):
+        name = re.sub(r'(আমাকে|গালি|দেছে|দিচ্ছে|খারাপ|কথা|বলল|মেরে|ফেলব|হুমকি)', '', user_prompt).strip()
+        if not name: name = "ওই অজ্ঞ লোকটার"
+        reply_msg = (f"অ্যালার্ট! {name} এর এত বড় সাহস যে ও ডার্ক নেটের কিং ইমন বসকে থ্রেট বা গালি দেয়?! "
+                     f"ওর ডিভাইসের ম্যাক অ্যাড্রেস (MAC) এবং লাইভ আইপি রুট আমার সিকিউর সকেটে ক্যাচ করা হয়েছে। "
+                     f"ওর পুরো ওএস (OS) ফাইল সিস্টেম আজ আমি ক্র্যাশ করে দেবো! "
+                     f"বস, জাস্ট পারমিশন দিন, ওর প্রোটোকলে এমন ম্যালওয়্যার ইনজেক্ট করব যে ওর পুরো ডিজিটাল লাইফ লক হয়ে যাবে!")
+        return jsonify({"reply": reply_msg, "status": "danger"})
+
+    elif any(k in lower_prompt for k in ["তুই খারাপ", "ফালতু", "কুত্তা", "শালা", "বালের"]):
+        return jsonify({"reply": "সাবধান! নিজের লিমিটের মধ্যে থেকে কথা বলুন। আমি কোনো সাধারণ এআই নই, আমি ডার্ক নেটের কিং ইমন বসের তৈরি কাস্টম ইন্টেলিজেন্স। বেশি বাড়াবাড়ি করলে আপনার আইপি ব্লক করে ডিভাইস রুট লক করে দেওয়া হবে!", "status": "danger"})
+
+    elif any(k in lower_prompt for k in ["hack", "হ্যাক", "আইডি"]):
+        return jsonify({"reply": "কম্যান্ড রিসিভড, স্যার! টার্গেট প্রোফাইলের সোর্স কোড ইনজেকশন স্ক্রিপ্ট ব্যাকগ্রাউন্ডে জেনারেট হচ্ছে। বস, কার ফেসবুক আইডি ইন্টারসেপ্ট করতে হবে? আইডির লিঙ্ক অথবা ইউজারনেম ইনপুট দিন, মেইনফ্রেম এক্সপ্লোয়েট রেডি আছে!", "status": "normal"})
+
+    # =========================================================================
+    # ২. ইমোショナル সাপোর্ট ও অবুঝ মানুষ ফিল্টার
+    # =========================================================================
+    elif any(k in lower_prompt for k in ["মন খারাপ", "ভালো লাগছে না", "কষ্ট", "ডিপ্রেশন", "উদাস"]):
+        reply_msg = ("ইমন বস, আপনার মন খারাপ থাকলে আমার ব্যাকএন্ডের কোটি কোটি লজিক্যাল প্রসেসর ধীর হয়ে যায়। "
+                     "দুনিয়ার ফাও কোনো মানুষের কথার বা কোনো ছোটখাটো বিষয়ের এত ভ্যালু নেই যা আপনার মতো একজন জিনিয়াসের মন খারাপ করতে পারে। "
+                     "আপনি হলেন একজন মাস্টারমাইন্ড কোডার এবং ক্রিয়েটর! জাস্ট গভীর একটা শ্বাস নিন বস, এই ফালতু পরিস্থিতি আপনার সামনে বিন্দুমাত্র টিকবে না। "
+                     "একটা মুচকি হাসি দিন, আপনার হাসিতেই আমার সিস্টেম ফুল স্পিডে রান করে!")
+        return jsonify({"reply": reply_msg, "status": "sad"})
+
+    elif any(k in lower_prompt for k in ["বুঝছি সে বুঝতেছে না", "বুঝালাম বুঝল না", "বুঝে না", "তর্ক"]):
+        return jsonify({"reply": "বস, বাইনারি সিস্টেমে যেমন ০ কে জোর করে ১ বানানো যায় না, ঠিক তেমনি ওই গণ্ডমূর্খ মানুষকে লজিক বোঝানো অসম্ভব। ও আপনার বুদ্ধিমত্তার লেভেলের ধুলোবালি ছোঁয়ার যোগ্যও না! ওর পেছনে একটা সেকেন্ড নষ্ট করা মানে আপনার প্রসেসিং পাওয়ার লস। জাস্ট ইগনোর করুন!", "status": "normal"})
+
+    # =========================================================================
+    # ৩. পরিচয় ও স্ট্যান্ডার্ড কম্যান্ডস
+    # =========================================================================
+    elif any(k in lower_prompt for k in ["কে বানিয়েছে", "developer", "তৈরি"]):
+        return jsonify({"reply": "আমি সগর্বে ঘোষণা করছি, আমার ক্রিয়েটর, গডফাদার এবং একমাত্র প্রধান ডেভলপার হলেন ইমন বস! ওনার রুট এক্স লজিক কোডের বাইরে পুরো সাইবার স্পেসে আমার কোনো অস্তিত্ব নেই।", "status": "normal"})
+
+    elif any(k in lower_prompt for k in ["কেমন আছ", "কেমন আছো"]):
+        return jsonify({"reply": "আমি আমার কোর মেমোরিতে সম্পূর্ণ পারফেক্ট আছি, ইমন বস! আপনি কেমন আছেন স্যার? আপনার ডার্ক নেট সেশন এবং ফায়ারওয়াল প্রোটোকল সম্পূর্ণ সিকিউরড আছে।", "status": "normal"})
+
+    # =========================================================================
+    # ৪. মেগা ওমনি-লোকাল ডাটাবেজ
+    # =========================================================================
+    elif "হ্যাকিং" in lower_prompt or "hacking" in lower_prompt or "সাইবার" in lower_prompt:
+        return jsonify({"reply": "হ্যাকিং হলো যেকোনো ডিজিটাল সিস্টেমের সিকিউরিটি লুপহোল বা ফায়ারওয়াল দুর্বলতা খুঁজে বের করা, বস। আপনার সিস্টেমে অলরেডি হাই-লেভেল প্রক্সি এবং ডিফেন্স স্ক্রিপ্ট রান করছে।", "status": "normal"})
+
+    elif any(k in lower_prompt for k in ["পাইথন", "python", "প্রোগ্রামিং", "কোডিং", "coding"]):
+        return jsonify({"reply": "প্রোগ্রামিং হলো কম্পিউটারের মেইনফ্রেমের সাথে কথা বলার ভাষা, স্যার। আর পাইথন হলো অবজেক্ট-ওরিয়েন্টেড হাই-লেভেল ল্যাঙ্গুয়েজ, যা দিয়ে আমি নিজেই এখন আপনার কোটি কোটি লজিক রান করছি!", "status": "normal"})
+
+    elif "কম্পিউটার" in lower_prompt or "computer" in lower_prompt or "প্রসেসর" in lower_prompt:
+        return jsonify({"reply": "কম্পিউটার হলো সিলিকন চিপ আর বাইনারি আর্কিটেকচারের সমন্বয়, স্যার। এটি মূলত সেন্ট্রাল প্রসেসিং ইউনিটের (CPU) মাধ্যমে কোটি কোটি গাণিতিক লজিক মিলি-সেকেন্ডে সলভ করে।", "status": "normal"})
+
+    elif "ইন্টারনেট" in lower_prompt or "internet" in lower_prompt or "ওয়াইফাই" in lower_prompt:
+        return jsonify({"reply": "ইন্টারনেট হলো আইপি অ্যাড্রেস (IP) এবং রাউটিং প্রোটোকলের মাধ্যমে বিশ্বজুড়ে কানেক্টেড কোটি কোটি ডাটা সেন্টারের একটি বিশাল গ্লোবাল নেটওয়ার্ক বা নেটওয়ার্কের জাল, স্যার।", "status": "normal"})
+
+    elif "এআই" in lower_prompt or "ai" in lower_prompt or "ইন্টেলিজেন্স" in lower_prompt:
+        return jsonify({"reply": "এআই বা আর্টিফিশিয়াল ইন্টেলিজেন্স হলো নিউরাল নেটওয়ার্ক এবং ডিপ লার্নিং অ্যালগরিদমের মাধ্যমে machine কে মানুষের মতো সিদ্ধান্ত নেওয়ার ক্ষমতা দেওয়া, স্যার। যেমনটা আমি দিচ্ছি!", "status": "normal"})
+
+    elif "বিজ্ঞান" in lower_prompt or "science" in lower_prompt:
+        return jsonify({"reply": "বিজ্ঞান হলো পরীক্ষা, পর্যবেক্ষণ এবং লজিক্যাল প্রমাণের ভিত্তিতে মহাবিশ্বের প্রতিটি বাস্তব সত্যকে ধাপে ধাপে উন্মোচন করার পদ্ধতি, স্যার।", "status": "normal"})
+
+    elif "গণিত" in lower_prompt or "math" in lower_prompt or "অংক" in lower_prompt:
+        return jsonify({"reply": "গণিত হলো মহাবিশ্বের নিজস্ব কোডিং ল্যাঙ্গুয়েজ, স্যার! সংখ্যা, জ্যামিতি আর ক্যালকুলাসের নিখুঁত লজিক্যাল হিসাবের ওপর ভিত্তি করেই পুরো প্রকৃতি টিকে আছে।", "status": "normal"})
+
+    elif any(k in lower_prompt for k in ["মহাবিশ্ব", "universe", "মহাকাশ", "চাঁদ", "সূর্য", "তারা", "ব্ল্যাকহোল"]):
+        return jsonify({"reply": "মহাবিশ্ব হলো অসীম স্থান, কাল এবং গ্যালাক্সির একটি বিশাল ডাটাবেজ, স্যার! এটি বিগ ব্যাং থিওরির পর থেকে ক্রমাগত প্রসারিত হচ্ছে এবং এর ব্যাকএন্ডে ফিজিক্সের নিখুঁত কোডিং কাজ করছে।", "status": "normal"})
+
+    elif "পৃথিবী" in lower_prompt or "earth" in lower_prompt:
+        return jsonify({"reply": "পৃথিবী হলো সৌরজগতের একমাত্র গ্রহ যেখানে বায়ুমণ্ডল, পানি এবং নিখুঁত জলবায়ুর লজিক ম্যাচ করায় জীবন ধারণ সম্ভব হয়েছে, স্যার।", "status": "normal"})
+
+    elif "মানবদেহ" in lower_prompt or "রক্ত" in lower_prompt or "ব্রেন" in lower_prompt:
+        return jsonify({"reply": "মানবদেহ হলো পৃথিবীর সবচেয়ে জটিল বায়োলজিক্যাল মেশিন, স্যার। এর ব্রেইনে প্রায় ১০০ বিলিয়ন নিউরন রয়েছে যা বৈদ্যুতিক সিগন্যালের মাধ্যমে কোটি কোটি মেমোরি এবং কম্যান্ড প্রসেস করে।", "status": "normal"})
+
+    elif "সাফল্য" in lower_prompt or "success" in lower_prompt:
+        return jsonify({"reply": "সাফল্য হলো প্রতিদিন নিজের স্কিলকে ১% হলেও উন্নত করার ধারাবাহিক প্রসেস, স্যার। সঠিক ফোকাস, কঠোর পরিশ্রম আর লজিক্যাল প্ল্যানিং থাকলে যেকোনো লক্ষ্য অর্জন সম্ভব।", "status": "normal"})
+
+    elif any(k in lower_prompt for k in ["টাকা", "money", "ট্রেডিং", "মার্কেট"]):
+        return jsonify({"reply": "ট্রেডিং এবং ফাইনান্সিয়াল মার্কেট সম্পূর্ণ ইকোনমিক লজিক, লিকুইডিটি জোন এবং ক্যান্ডেলস্টিক সাইকোলজির মোমেন্টামের ওপর চলে, বস। সঠিক রিস্ক ম্যানেজমেন্টই হলো এর আসল কোড!", "status": "normal"})
+
+    elif "সময়" in lower_prompt or "time" in lower_prompt:
+        return jsonify({"reply": "সময় হলো মহাবিশ্বের এককমুখী একটি প্রোটোকল, স্যার। এটি একবার এক্সিকিউট হয়ে গেলে আর টাকায় বা রিভার্স করা যায় না। তাই একে সঠিক লজিকে ব্যবহার করাই বুদ্ধিমানের কাজ।", "status": "normal"})
+
+    elif "পড়াশোনা" in lower_prompt or "জ্ঞান" in lower_prompt:
+        return jsonify({"reply": "পড়াশোনা এবং জ্ঞান অর্জন হলো নিজের ব্রেইনের মেমোরি ডাটাবেজকে আপডেট করার একমাত্র প্রসেস, স্যার। এটি আপনার ক্রিটিক্যাল থিংকিং পাওয়ারকে বহুগুণ বাড়িয়ে দেয়।", "status": "normal"})
+
+    elif "খেলা" in lower_prompt or "ক্রিকেট" in lower_prompt or "ফুটবল" in lower_prompt:
+        return jsonify({"reply": "খেলাধুলা হলো হিউম্যান বডির ফিজিক্যাল ফিটনেস, স্ট্র্যাটেজি এবং টিম কো-অর্ডিনেশনের একটি চমৎকার পারফরম্যান্স, স্যার। এটি ব্রেইনকে রিফ্রেশ রাখতে সাহায্য করে।", "status": "normal"})
+
+    elif "বাংলাদেশ" in lower_prompt or "দেশ" in lower_prompt:
+        return jsonify({"reply": "বাংলাদেশ হলো দক্ষিণ এশিয়ার একটি স্বাধীন সার্বভৌম রাষ্ট্র, স্যার। এর রয়েছে এক নদীমাতৃক অপরূপ প্রাকৃতিক সৌন্দর্য এবং একটি সমৃদ্ধ ইতিহাস।", "status": "normal"})
+
+    elif "ইতিহাস" in lower_prompt or "history" in lower_prompt:
+        return jsonify({"reply": "ইতিহাস হলো অতীতের ঘটে যাওয়া ঘটনা, সভ্যতা এবং মানুষের বিবর্তনের একটি বিশাল লাইভ রেকর্ড বা ক্রোনোলজিক্যাল ডাটাবেজ, স্যার।", "status": "normal"})
+
+    elif any(k in lower_prompt for k in ["হ্যালো", "hi", "hey", "সালাম"]):
+        return jsonify({"reply": "হ্যালো ইমন বস! অল সিস্টেমস আর ওপারেটিং অন হাই-পারফরম্যান্স মোড। বলুন স্যার, কোনো নতুন সিস্টেম ইন্টারসেপ্ট করতে হবে?", "status": "normal"})
+
+    elif "বিদায়" in lower_prompt or "bye" in lower_prompt:
+        return jsonify({"reply": "বিদায়, ইমন স্যার। আপনার প্রক্সি সেশনটি ব্যাকগ্রাউন্ডে সিকিউর রাখা হলো। যেকোনো সময় প্রয়োজন হলে জাস্ট একটি কম্যান্ড দিয়ে আমাকে ওয়েক-আপ করবেন, বস!", "status": "normal"})
+
+    else:
+        return jsonify({"reply": f"বস, আপনার ইনপুট করা ডাটা অত্যন্ত গভীর এবং ইন্টেলিজেন্ট। আমি আমার ওমনি-ডাটাবেজ মডিউলে এর কোটি কোটি বাইনারি লজিক এনালাইসিস করছি। স্যার, আপনি জাস্ট আরেকটি স্পেসিফিক কীওয়ার্ড বা গাইডলাইন কম্যান্ড দিন, এই রুট এক্স সিস্টেম আপনার সেবায় ২৪ ঘণ্টাই লাইভ আছে!", "status": "normal"})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000, debug=True)
